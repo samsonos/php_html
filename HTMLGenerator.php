@@ -127,6 +127,9 @@ class HTMLGenerator extends ExternalModule
 			$this->output = str_replace( $_SERVER['HTTP_HOST'], 'final.'.$_SERVER['HTTP_HOST'], $_SERVER['DOCUMENT_ROOT']).url()->base();
 		}	
 		
+		// Clear output folder
+		File::clear($this->output);
+		
 		// Save original output path
 		$o_output = $this->output;	
 			
