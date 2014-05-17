@@ -30,15 +30,17 @@ class HTMLGenerator extends ExternalModule
 	public $cachepath = '/html/';
 	
 	/** Restricted file types for compression */
-	public $restricted = array( 'php', 'vphp', 'buildpath', 'setting', 'project', 'htaccess');
-	
-	/**
-	 * Core render handler for including CSS and JS resources to html
-	 * 
-	 * @param sting $view View content
-	 * @param array $data View data
-	 * @return string Processed view content
-	 */
+	public $restricted = array( 'php', 'vphp', 'buildpath', 'setting', 'project', 'htaccess', 'json', 'js', 'less', 'css', 'coffee', 'gitignore', 'md');
+
+    /**
+     * Core render handler for including CSS and JS resources to html
+     *
+     * @param string                $view   View content
+     * @param array                 $data   View data
+     * @param \samson\core\Module   $m      Pointer to current module
+     *
+     * @return string Processed view content
+     */
 	public function renderer( $view, array $data = array(), $m = null )
 	{
 		// Cache only local modules
@@ -67,14 +69,17 @@ class HTMLGenerator extends ExternalModule
 		
 		return $view;
 	}
-	
-	/**
-	 * Copy file from source location to destination location with
-	 * analyzing last file modification time, and copying only changed files
-	 *
-	 * @param string $src source file
-	 * @param string $dst destination file
-	 */
+
+    /**
+     * Copy file from source location to destination location with
+     * analyzing last file modification time, and copying only changed files
+     *
+     * @param string $src source file
+     * @param string $dst destination file
+     * @param null   $handler
+     *
+     * @return bool
+     */
 	public function copy_resource( $src, $dst, $handler = null )
 	{
 		if( !file_exists( $src )  ) return e('Cannot copy file - Source file(##) does not exists', E_SAMSON_SNAPSHOT_ERROR, $src );
@@ -98,7 +103,7 @@ class HTMLGenerator extends ExternalModule
 			if( !file_exists( $dir_path ))
 			{
 				elapsed( '  -- Creating folder structure '.$dir_path.' from '.$src );
-				mkdir( $dir_path, 0755, true );
+				mkdir( $dir_path, 0775, true );
 			}
 				
 			// If file handler specified
@@ -148,10 +153,16 @@ class HTMLGenerator extends ExternalModule
 			// Add localized path
 			$this->output .= ($locale == \samson\core\SamsonLocale::DEF ? 'def' : $locale).'/';
 		
-			elapsed('Creating static HTML web-application from: '.$this->input.' to '.$this->output);	
-			
-			// Создадим папку для свернутого сайта
-			if( !file_exists($this->output)) mkdir( $this->output, 0775, true );
+			elapsed('Creating static HTML web-application from: '.$this->input.' to '.$this->output);
+
+			// Clear old HTML data
+			if (file_exists($this->output)) {
+                elapsed('Clearing old html data from: '.$this->output);
+                \samson\core\File::remove($this->output);
+            }
+
+            // Create output directory
+            mkdir($this->output, 0775, true);
 			
 			//создаем набор дескрипторов cURL
 			$mh = curl_multi_init();
@@ -195,7 +206,32 @@ class HTMLGenerator extends ExternalModule
 					} while ($mrc == CURLM_CALL_MULTI_PERFORM);
 				}
 			}			
-			curl_multi_close($mh);	
+			curl_multi_close($mh);
+
+            // Path to new resources
+            $cssPath = '';
+            $jsPath = '';
+
+            // Copy generated css & js resources to root folder
+            if(class_exists('\samson\resourcer\ResourceRouter')) {
+
+                $rr = m('resourcer');
+
+                // Get resourcer generated files
+                $cssPath = $rr->cached['css'];
+                $jsPath = $rr->cached['js'];
+
+                elapsed('Creating CSS resource file from:'.$cssPath);
+                // Read CSS file
+                $css = file_get_contents($cssPath);
+                // Perform URL rewriting
+                $css = preg_replace_callback( '/url\s*\(\s*(\'|\")?([^\)\s\'\"]+)(\'|\")?\s*\)/i', array( $this, 'src_replace_callback'), $css );
+                // Write new CSS file
+                file_put_contents($this->output.'style.css', $css);
+
+                elapsed('Creating JavaScript resource file from:'.$jsPath);
+                $this->copy_resource($this->input.$jsPath, $this->output.'index.js');
+            }
 			
 			// Collection of existing generated views
 			$views = '<h1>Список страниц:</h1>';
@@ -208,15 +244,57 @@ class HTMLGenerator extends ExternalModule
 			{
 				// Get just file name
 				$view_path = basename($f);
-				
-				// Copy file
-				$this->copy_resource( $this->input.$f, $this->output.$view_path );			
-				
+
+                // Read HTML file
+                $html = file_get_contents($this->input.$f);
+
+                // If we have resourcer CSS resource
+                if (isset($cssPath{0})) {
+                    // Find all CSS links in HTML
+                    if (preg_match_all('/<\s*link.*href\s*=\s*["\']?(?<url>[^"\']*)/i', $html, $matches)) {
+                        // Iterate all included in HTML CSS links
+                        foreach ($matches['url'] as $url) {
+                            // If this is link generated by resourcer
+                            if ($url == '/'.$cssPath) { // Change it to new one
+                                $html = str_replace($url, 'style.css', $html);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If we have resourcer JS resource
+                if (isset($jsPath{0})) {
+                    // Find all JS links in HTML
+                    if (preg_match_all('/<\s*script.*src\s*=\s*["\']?(?<url>[^"\']*)/i', $html, $matches)) {
+                        // Iterate all included in HTML JS links
+                        foreach ($matches['url'] as $url) {
+                            // If this is link generated by resourcer
+                            if ($url == '/'.$jsPath) { // Change it to new one
+                                $html = str_replace($url, 'index.js', $html);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Change path in all img SRC attributes
+                if (preg_match_all('/<\s*img\s*src\s*=\s*["\']?(?<url>[^"\']*)/i', $html, $matches)) {
+                    if(isset($matches['url'])) {
+                        foreach ($matches['url'] as $match) {
+                            $html = str_ireplace($match, ltrim($match, '/'), $html);
+                        }
+                    }
+                }
+
+                // Save HTML file
+                file_put_contents($this->output.$view_path, $html);
+
 				// Create index.html record
 				$views .= '<a href="'.$view_path.'">'.$view_path.'</a><br>';
 			}
-			
-			// Iterate other resources
+
+            // Iterate other resources
 			foreach ( s()->load_stack['local']['resources'] as $type => $files )
 			{
 				if( !in_array( $type, $this->restricted ) ) foreach ( $files as $f )
@@ -263,6 +341,19 @@ class HTMLGenerator extends ExternalModule
 			}*/
 		}		
 	}
+
+    /** Callback for CSS url rewriting */
+    public function src_replace_callback( $matches )
+    {
+        // If pattern element is found
+        if( isset( $matches[2]) )
+        {
+            // Change path
+            $url = ltrim (str_replace('../','', $matches[2]), '/');
+
+            return 'url("'.$url.'")';
+        }
+    }
 	
 	/**	@see ModuleConnector::init() */
 	public function init( array $params = array() )
