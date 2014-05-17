@@ -123,53 +123,71 @@ class HTMLGenerator extends ExternalModule
 	 */
 	public function compress()
 	{
-		// Generate project name
-		$project_name = str_replace('local.', '', $_SERVER['HTTP_HOST']);
-		
 		// If no output path specified
-		if( !isset($this->output) )
-		{			
+		if (!isset($this->output)) {
 			$this->output = str_replace( $_SERVER['HTTP_HOST'], 'final.'.$_SERVER['HTTP_HOST'], $_SERVER['DOCUMENT_ROOT']).url()->base();
-		}	
-		
-		// Clear output folder
-		File::clear($this->output);
-		
+		}
+
+        // Clear old HTML data
+        if (file_exists($this->output)) {
+            elapsed('Clearing old html data from: '.$this->output);
+            \samson\core\File::remove($this->output);
+        }
+
+        // Create output directory
+        mkdir($this->output, 0775, true);
+
 		// Save original output path
-		$o_output = $this->output;	
+		$o_output = $this->output;
+
+        elapsed('Creating static HTML web-application from: '.$this->input.' to '.$this->output);
+
+        // Collection of existing generated views
+        $views = '<h1>#<i>'.$_SERVER['HTTP_HOST'].'</i> .html pages:</h1>';
+        $views .= 'Generated on '.date('d M Y h:i');
+
+        // Path to new resources
+        $cssPath = '';
+        $jsPath = '';
+
+        // Copy generated css & js resources to root folder
+        if(class_exists('\samson\resourcer\ResourceRouter')) {
+            $rr = m('resourcer');
+
+            // Get resourcer CSS generated files
+            $cssPath = & $rr->cached['css'];
+            if (isset($cssPath)) {
+                elapsed('Creating CSS resource file from:'.$cssPath);
+                // Read CSS file
+                $css = file_get_contents($cssPath);
+                // Perform URL rewriting
+                $css = preg_replace_callback( '/url\s*\(\s*(\'|\")?([^\)\s\'\"]+)(\'|\")?\s*\)/i', array( $this, 'src_replace_callback'), $css );
+                // Write new CSS file
+                file_put_contents($this->output.'style.css', $css);
+            }
+
+            // Get resourcer JS generated files
+            $jsPath = & $rr->cached['js'];
+            if (isset($jsPath)) {
+                elapsed('Creating JavaScript resource file from:'.$jsPath);
+                $this->copy_resource($this->input.$jsPath, $this->output.'index.js');
+            }
+        }
 			
 		// Iterate all site supported locales
 		foreach ( \samson\core\SamsonLocale::$locales as $locale )
-		{		
+		{
+            // Set views locale description
+            $views .= '<h2>Locale <i>'.($locale == \samson\core\SamsonLocale::DEF ? 'default' : $locale).'</i>:<h2>';
+
 			// Get original output path
 			$this->output = $o_output;
-			
-			// Generate localized path to cached html pages
-			$pages_path = __SAMSON_CACHE_PATH.$this->cachepath.locale_path($locale);
-			
-			// Get realpath to web application
-			$realpath = s()->path();			
-			
-			// Add localized path
-			$this->output .= ($locale == \samson\core\SamsonLocale::DEF ? 'def' : $locale).'/';
-		
-			elapsed('Creating static HTML web-application from: '.$this->input.' to '.$this->output);
 
-			// Clear old HTML data
-			if (file_exists($this->output)) {
-                elapsed('Clearing old html data from: '.$this->output);
-                \samson\core\File::remove($this->output);
-            }
-
-            // Create output directory
-            mkdir($this->output, 0775, true);
-			
 			//создаем набор дескрипторов cURL
 			$mh = curl_multi_init();
 			
 			// Perform generation of every controller
-			foreach ( s()->load_module_stack['local']['controllers'] as $ctrl )
-			{
+			foreach (s()->load_module_stack['local']['controllers'] as $ctrl) {
 				// generate controller URL
 				$controller = '/'.locale_path($locale).strtolower(basename($ctrl,'.php'));
 					
@@ -208,42 +226,19 @@ class HTMLGenerator extends ExternalModule
 			}			
 			curl_multi_close($mh);
 
-            // Path to new resources
-            $cssPath = '';
-            $jsPath = '';
+            // Generate localized path to cached html pages
+            $pages_path = __SAMSON_CACHE_PATH.$this->cachepath.locale_path($locale);
 
-            // Copy generated css & js resources to root folder
-            if(class_exists('\samson\resourcer\ResourceRouter')) {
+            // Files array
+            $files = array();
 
-                $rr = m('resourcer');
-
-                // Get resourcer generated files
-                $cssPath = $rr->cached['css'];
-                $jsPath = $rr->cached['js'];
-
-                elapsed('Creating CSS resource file from:'.$cssPath);
-                // Read CSS file
-                $css = file_get_contents($cssPath);
-                // Perform URL rewriting
-                $css = preg_replace_callback( '/url\s*\(\s*(\'|\")?([^\)\s\'\"]+)(\'|\")?\s*\)/i', array( $this, 'src_replace_callback'), $css );
-                // Write new CSS file
-                file_put_contents($this->output.'style.css', $css);
-
-                elapsed('Creating JavaScript resource file from:'.$jsPath);
-                $this->copy_resource($this->input.$jsPath, $this->output.'index.js');
-            }
-			
-			// Collection of existing generated views
-			$views = '<h1>Список страниц:</h1>';
-			
-			// Files array
-			$files = array();
-						
-			// Iterate generated pages
-			foreach ( \samson\core\File::dir($pages_path,'html',null,$files,0) as $f) 
-			{
-				// Get just file name
-				$view_path = basename($f);
+            // Iterate generated pages
+            foreach ( \samson\core\File::dir($pages_path,'html',null,$files,0) as $f)
+            {
+                // Ignore default controller index page as it will be included in this controller
+                if(strpos($f, '/index.html') != false) {
+                    continue;
+                }
 
                 // Read HTML file
                 $html = file_get_contents($this->input.$f);
@@ -287,59 +282,65 @@ class HTMLGenerator extends ExternalModule
                     }
                 }
 
+                // Get just file name
+                $view_path = ($locale != \samson\core\SamsonLocale::DEF ? $locale.'_' : '').basename($f);
+
                 // Save HTML file
                 file_put_contents($this->output.$view_path, $html);
 
-				// Create index.html record
-				$views .= '<a href="'.$view_path.'">'.$view_path.'</a><br>';
-			}
+                // Create index.html record
+                $views .= '<a href="'.$view_path.'">'.basename($f).'</a><br>';
+            }
+        }
 
-            // Iterate other resources
-			foreach ( s()->load_stack['local']['resources'] as $type => $files )
-			{
-				if( !in_array( $type, $this->restricted ) ) foreach ( $files as $f )
-				{
-					$this->copy_resource( $f, str_replace( $this->input, $this->output, $f ));
-				}
-			}
-	
-			// Write index file
-			file_put_contents( $this->output.'index.html', $views );
-					
-			// Generate zip file name
-			$zip_file = $o_output.'www'.$locale.'.zip';
-			
-			elapsed('Creating ZIP file: '.$zip_file);
-			
-			// Create zip archieve			
-			$zip = new \ZipArchive;				
-			if ($zip->open($zip_file, \ZipArchive::CREATE) === true)
-			{
-				foreach (\samson\core\File::dir($this->output) as $file ) $zip->addFile( $file, str_replace($this->output, '', $file));
-				
-				$zip->close();
-			}
-			else elapsed('Cannot create zip file');		
+        // Write index file
+        file_put_contents( $this->output.'index.html', $views );
 
-			/*
-			// If email module is loaded
-			if( $email = m('email') && sizeof($this->recipients))
-			{
-				// Generate notification message
-				$message = $this->project_name($project_name)->locale($locale)->output('email');
-				$title = 'Generated HTML snapshot for '.$project_name.($locale != \samson\core\SamsonLocale::DEF ? '('.$locale.')' : '');
-							
-				elapsed('Sending notification E-mail to '.$this->recipients[0]);
-				
-				$email
-					->from('htmlgenerator@samsonos.com','HTML Generator')
-					->to($this->recipients)					
-					->message($message)
-					->subject($title)
-					->attach($zip_file)
-				->send();				
-			}*/
-		}		
+        // Iterate other resources
+        foreach ( s()->load_stack['local']['resources'] as $type => $files ) {
+            if (!in_array( $type, $this->restricted)) {
+                foreach ($files as $f) {
+                    $this->copy_resource( $f, str_replace( $this->input, $this->output, $f ));
+                }
+            }
+        }
+
+        // Generate zip file name
+        $zip_file = $o_output.'www.zip';
+
+        elapsed('Creating ZIP file: '.$zip_file);
+
+        // Create zip archieve
+        $zip = new \ZipArchive;
+        if ($zip->open($zip_file, \ZipArchive::CREATE) === true)
+        {
+            foreach (\samson\core\File::dir($this->output) as $file) {
+                $zip->addFile( $file, str_replace($this->output, '', $file));
+            }
+
+            $zip->close();
+        }
+        else elapsed('Cannot create zip file');
+
+        /*
+        // If email module is loaded
+        if( $email = m('email') && sizeof($this->recipients))
+        {
+            // Generate notification message
+            $message = $this->project_name($project_name)->locale($locale)->output('email');
+            $title = 'Generated HTML snapshot for '.$project_name.($locale != \samson\core\SamsonLocale::DEF ? '('.$locale.')' : '');
+
+            elapsed('Sending notification E-mail to '.$this->recipients[0]);
+
+            $email
+                ->from('htmlgenerator@samsonos.com','HTML Generator')
+                ->to($this->recipients)
+                ->message($message)
+                ->subject($title)
+                ->attach($zip_file)
+            ->send();
+        }*/
+
 	}
 
     /** Callback for CSS url rewriting */
