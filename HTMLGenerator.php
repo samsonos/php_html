@@ -358,9 +358,9 @@ class HTMLGenerator extends ExternalModule
 	
 	/**	@see ModuleConnector::init() */
 	public function init( array $params = array() )
-	{	
-		// Register view renderer
-		s()->renderer( array( $this, 'renderer') );		
+	{
+        // Subscribe to core rendered event
+        s()->subscribe('core.rendered', array( $this, 'renderer'));
 		
 		// Вызовем родительский метод
 		parent::init( $params );				
