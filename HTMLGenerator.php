@@ -105,7 +105,7 @@ class HTMLGenerator extends ExternalModule
 			if( !file_exists( $dir_path ))
 			{
 				elapsed( '  -- Creating folder structure '.$dir_path.' from '.$src );
-				mkdir( $dir_path, 0775, true );
+                \samson\core\File::mkdir($dir);
 			}
 				
 			// If file handler specified
@@ -130,14 +130,10 @@ class HTMLGenerator extends ExternalModule
 			$this->output = str_replace( $_SERVER['HTTP_HOST'], 'final.'.$_SERVER['HTTP_HOST'], $_SERVER['DOCUMENT_ROOT']).url()->base();
 		}
 
-        // Clear old HTML data
-        if (file_exists($this->output)) {
-            elapsed('Clearing old html data from: '.$this->output);
-            \samson\core\File::remove($this->output);
+        // Create output directory and clear old HTML data
+        if (\samson\core\File::mkdir($this->output)) {
+            \samson\core\File::clear($this->output);
         }
-
-        // Create output directory
-        mkdir($this->output, 0775, true);
 
 		// Save original output path
 		$o_output = $this->output;
