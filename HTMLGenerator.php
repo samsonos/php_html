@@ -61,7 +61,9 @@ class HTMLGenerator extends ExternalModule
 			$dir = pathname( $path );
 			
 			// Create folder
-			if( ! file_exists( $dir )) mkdir( $dir, 0755, TRUE );		
+			if (!file_exists( $dir )) {
+                \samson\core\File::mkdir($dir);
+            }
 			
 			// Save html data
 			file_put_contents( $path, $view );			
