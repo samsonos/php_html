@@ -48,6 +48,7 @@ class HTMLGenerator extends ExternalModule
      */
     public function renderer($view, array $data = array(), $m = null)
     {
+        // TODO: This must be done with new router module
         // Cache only local modules
         if (is_a($m, ns_classname('LocalModule', 'samson\core')) && url()->module != $this->id) {
             // Build cache path with current
@@ -63,7 +64,7 @@ class HTMLGenerator extends ExternalModule
             $path .= '.html';
 
             // Get directory path
-            $dir = pathname($path);
+            $dir = dirname($path);
 
             // Create folder
             if (!file_exists($dir)) {
@@ -105,7 +106,7 @@ class HTMLGenerator extends ExternalModule
         // If we know what to do
         if( isset( $action ))
         {
-            // Create folder structure if nessesary
+            // Create folder structure if necessary
             $dir_path = pathname( $dst );
             if( !file_exists( $dir_path ))
             {
@@ -154,7 +155,7 @@ class HTMLGenerator extends ExternalModule
         $jsPath = '';
 
         // Copy generated css & js resources to root folder
-        if(class_exists('\samson\resourcer\ResourceRouter')) {
+        if (class_exists('\samson\resourcer\ResourceRouter')) {
             $rr = m('resourcer');
 
             // Get resourcer CSS generated files
@@ -181,6 +182,9 @@ class HTMLGenerator extends ExternalModule
 
         // Iterate all site supported locales
         foreach (\samson\core\SamsonLocale::$locales as $locale) {
+
+            // Generate localized path to cached html pages
+            $pages_path = $this->cache_path.locale_path($locale);
 
             // Set views locale description
             $views .= '<h2>Locale <i>'.($locale == \samson\core\SamsonLocale::DEF ? 'default' : $locale).'</i>:<h2>';
@@ -230,8 +234,7 @@ class HTMLGenerator extends ExternalModule
             }
             curl_multi_close($mh);
 
-            // Generate localized path to cached html pages
-            $pages_path = $this->input.__SAMSON_CACHE_PATH.$this->cachepath.locale_path($locale);
+
 
             // Files array
             $files = array();
