@@ -13,8 +13,8 @@ namespace samson\html;
  */
 class RewritePath
 {
-    /** @var \samson\fs\AbstractFileService File system service */
-    protected $fs;
+    /** @var \samson\fs\LocalFileService File system service */
+    protected $fileService;
 
     /** @var string Source file path */
     protected $source;
@@ -27,13 +27,24 @@ class RewritePath
 
     /**
      * Constructor
+     * @param \samson\fs\LocalFileService $fs Local file system service
      * @param string $source File path
      * @param string Resource path matching template
      */
-    public function __construct(\samson\fs\AbstractFileService $fs, $source, $template)
+    public function __construct(\samson\fs\LocalFileService $fileService, $source, $template)
     {
-        $this->fs = $fs;
-        $this->source = $source;
-        $this->template = $template;
+        $this->fileService = $fileService;
+
+        // Check if source file exists in current file system
+        if ($fileService->exists($source)) {
+            $this->source = $source;
+            $this->template = $template;
+        } else { // Signal error
+            return e(
+                'Cannot create '.get_class($this).' instance - Source file[##] does not exists',
+                E_SAMSON_CORE_ERROR,
+                $source
+            );
+        }
     }
 }
