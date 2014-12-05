@@ -5,32 +5,37 @@ use samson\core\ExternalModule;
 use samson\core\File;
 
 /**
- * Интерфейс для подключения модуля в ядро фреймворка SamsonPHP
- *
+ * HTML markup generator module
  * @package SamsonPHP
- * @author Vitaly Iegorov <vitalyiegorov@gmail.com>
- * @author Nikita Kotenko <nick.w2r@gmail.com>
- * @version 0.1
+ * @author Vitaly Iegorov <egorov@samsonos.com>
  */
 class HTMLGenerator extends ExternalModule
 {
-	/** Идентификатор модуля */
-	protected $id = 'html';
-	
-	/** Source path */
-	public $input = __SAMSON_CWD__;
+    /** Идентификатор модуля */
+    protected $id = 'html';
 
-	/** Output path */
-	public $output;
-	
-	/* Email recipients */
-	public $recipients = array('vitalyiegorov@gmail.com');
-	
-	/** Path for storing generated views */
-	public $cachepath = '/html/';
-	
-	/** Restricted file types for compression */
-	public $restricted = array( 'php', 'vphp', 'buildpath', 'setting', 'project', 'htaccess', 'json', 'js', 'less', 'css', 'coffee', 'gitignore', 'md');
+    /** Source path */
+    public $input = __SAMSON_CWD__;
+
+    /** Output path */
+    public $output;
+
+    /** Restricted file types for compression */
+    public $restricted = array(
+        'php',
+        'vphp',
+        'buildpath',
+        'setting',
+        'project',
+        'htaccess',
+        'json',
+        'js',
+        'less',
+        'css',
+        'coffee',
+        'gitignore',
+        'md'
+    );
 
     /**
      * Core render handler for including CSS and JS resources to html
@@ -41,36 +46,36 @@ class HTMLGenerator extends ExternalModule
      *
      * @return string Processed view content
      */
-	public function renderer( $view, array $data = array(), $m = null )
-	{
-		// Cache only local modules
-		if( is_a( $m, ns_classname('LocalModule','samson\core')) && url()->module != $this->id )
-		{		
-			// Build HTML file path
-			$path = __SAMSON_CWD__.__SAMSON_CACHE_PATH.$this->cachepath.locale_path();
-			
-			// Module name
-			$path .= isset(url()->module{0}) ? url()->module:'index';
-			
-			// Module action name
-			$path .= isset(url()->method{0}) ? '_'.url()->method{0}:'';
-			
-			$path .= '.html';		
-			
-			// Get directory path
-			$dir = pathname( $path );
-			
-			// Create folder
-			if (!file_exists( $dir )) {
+    public function renderer($view, array $data = array(), $m = null)
+    {
+        // Cache only local modules
+        if (is_a($m, ns_classname('LocalModule', 'samson\core')) && url()->module != $this->id) {
+            // Build cache path with current
+            $path = $this->cache_path.locale_path();
+
+            // Add module name to path
+            $path .= isset(url()->module{0}) ? url()->module:'index';
+
+            // Add module controller action name
+            $path .= isset(url()->method{0}) ? '_'.url()->method{0}:'';
+
+            // Add file extension
+            $path .= '.html';
+
+            // Get directory path
+            $dir = pathname($path);
+
+            // Create folder
+            if (!file_exists($dir)) {
                 \samson\core\File::mkdir($dir);
             }
-			
-			// Save html data
-			file_put_contents( $path, $view );			
-		}
-		
-		return $view;
-	}
+
+            // Save html data
+            file_put_contents($path, $view);
+        }
+
+        return $view;
+    }
 
     /**
      * Copy file from source location to destination location with
@@ -82,61 +87,61 @@ class HTMLGenerator extends ExternalModule
      *
      * @return bool
      */
-	public function copy_resource( $src, $dst, $handler = null )
-	{
-		if( !file_exists( $src )  ) return e('Cannot copy file - Source file(##) does not exists', E_SAMSON_SNAPSHOT_ERROR, $src );
-	
-		// Action to do
-		$action = null;
-		
-		// Get source file timestamp
-		$source_ts = filemtime( $src );
-	
-		// If destination file does not exists
-		if( !file_exists( $dst ) ) $action = 'Creating';
-		// If source file has been changed
-		else if( abs($source_ts - filemtime( $dst )) > 125 ) $action = 'Updating';
-	
-		// If we know what to do
-		if( isset( $action ))
-		{				
-			// Create folder structure if nessesary
-			$dir_path = pathname( $dst );
-			if( !file_exists( $dir_path ))
-			{
-				elapsed( '  -- Creating folder structure '.$dir_path.' from '.$src );
+    public function copy_resource( $src, $dst, $handler = null )
+    {
+        if( !file_exists( $src )  ) return e('Cannot copy file - Source file(##) does not exists', E_SAMSON_SNAPSHOT_ERROR, $src );
+
+        // Action to do
+        $action = null;
+
+        // Get source file timestamp
+        $source_ts = filemtime( $src );
+
+        // If destination file does not exists
+        if( !file_exists( $dst ) ) $action = 'Creating';
+        // If source file has been changed
+        else if( abs($source_ts - filemtime( $dst )) > 125 ) $action = 'Updating';
+
+        // If we know what to do
+        if( isset( $action ))
+        {
+            // Create folder structure if nessesary
+            $dir_path = pathname( $dst );
+            if( !file_exists( $dir_path ))
+            {
+                elapsed( '  -- Creating folder structure '.$dir_path.' from '.$src );
                 \samson\core\File::mkdir($dir_path);
-			}
-				
-			// If file handler specified
-			if( is_callable($handler) ) call_user_func( $handler, $src, $dst, $action );
-			// Copy file
-			else copy( $src, $dst );
-			
-			elapsed( '  -- '.$action.' file '.$dst.' from '.$src.'(Difference '.date('H:i:s',abs($source_ts - filemtime( $dst ))).')' );
-	
-			// Touch source file with copied file			
-			touch( $src );
-		}
-	}
-	
-	/**
-	 * Create static HTML site version
-	 */
-	public function compress()
-	{
-		// If no output path specified
-		if (!isset($this->output{0})) {
-			$this->output = __SAMSON_PUBLIC_PATH.'/out/';
-		}
+            }
+
+            // If file handler specified
+            if( is_callable($handler) ) call_user_func( $handler, $src, $dst, $action );
+            // Copy file
+            else copy( $src, $dst );
+
+            elapsed( '  -- '.$action.' file '.$dst.' from '.$src.'(Difference '.date('H:i:s',abs($source_ts - filemtime( $dst ))).')' );
+
+            // Touch source file with copied file
+            touch( $src );
+        }
+    }
+
+    /**
+     * Create static HTML site version
+     */
+    public function compress()
+    {
+        // If no output path specified
+        if (!isset($this->output{0})) {
+            $this->output = __SAMSON_PUBLIC_PATH.'/out/';
+        }
 
         // Create output directory and clear old HTML data
         if (\samson\core\File::mkdir($this->output)) {
             \samson\core\File::clear($this->output);
         }
 
-		// Save original output path
-		$o_output = $this->output;
+        // Save original output path
+        $o_output = $this->output;
 
         elapsed('Creating static HTML web-application from: '.$this->input.' to '.$this->output);
 
@@ -173,57 +178,57 @@ class HTMLGenerator extends ExternalModule
                 $this->copy_resource($this->input.$jsPath, $this->output.'index.js');
             }
         }
-			
-		// Iterate all site supported locales
-		foreach (\samson\core\SamsonLocale::$locales as $locale) {
+
+        // Iterate all site supported locales
+        foreach (\samson\core\SamsonLocale::$locales as $locale) {
 
             // Set views locale description
             $views .= '<h2>Locale <i>'.($locale == \samson\core\SamsonLocale::DEF ? 'default' : $locale).'</i>:<h2>';
 
-			// Get original output path
-			$this->output = $o_output;
+            // Get original output path
+            $this->output = $o_output;
 
-			//создаем набор дескрипторов cURL
-			$mh = curl_multi_init();
+            //создаем набор дескрипторов cURL
+            $mh = curl_multi_init();
 
             // TODO: this is not should be rewritten to support new router
-			// Perform generation of every controller
-			foreach (s()->load_module_stack['local']['controllers'] as $ctrl) {
-				// generate controller URL
-				$controller = '/'.locale_path($locale).strtolower(basename($ctrl,'.php'));
-					
-				elapsed('Generating HTML snapshot for: '.$controller);
-			
-				// Create curl instance
-				$ch = \curl_init('127.0.0.1'.$controller);
-					
-				// Set base request options
-				\curl_setopt_array($ch, array(
-					CURLOPT_VERBOSE => true,
-					CURLOPT_RETURNTRANSFER => true,
-					CURLOPT_HTTPHEADER =>array('Host: '.$_SERVER['HTTP_HOST'] ),
-				));	
-				
-				// Add curl too multi request
-				curl_multi_add_handle( $mh, $ch );
-			}
-			
-			// TODO: Create function\module for this
-			
-			// Curl multi-request
-			$active = null;	
-			do{
-				$mrc = curl_multi_exec($mh, $active);
-			} while ($mrc == CURLM_CALL_MULTI_PERFORM);
-			
-			while ($active && $mrc == CURLM_OK) {
-				if (curl_multi_select($mh) != -1) {
-					do {
-						$mrc = curl_multi_exec($mh, $active);
-					} while ($mrc == CURLM_CALL_MULTI_PERFORM);
-				}
-			}
-			curl_multi_close($mh);
+            // Perform generation of every controller
+            foreach (s()->load_module_stack['local']['controllers'] as $ctrl) {
+                // generate controller URL
+                $controller = '/'.locale_path($locale).strtolower(basename($ctrl,'.php'));
+
+                elapsed('Generating HTML snapshot for: '.$controller);
+
+                // Create curl instance
+                $ch = \curl_init('127.0.0.1'.$controller);
+
+                // Set base request options
+                \curl_setopt_array($ch, array(
+                    CURLOPT_VERBOSE => true,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER =>array('Host: '.$_SERVER['HTTP_HOST'] ),
+                ));
+
+                // Add curl too multi request
+                curl_multi_add_handle( $mh, $ch );
+            }
+
+            // TODO: Create function\module for this
+
+            // Curl multi-request
+            $active = null;
+            do{
+                $mrc = curl_multi_exec($mh, $active);
+            } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+
+            while ($active && $mrc == CURLM_OK) {
+                if (curl_multi_select($mh) != -1) {
+                    do {
+                        $mrc = curl_multi_exec($mh, $active);
+                    } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+                }
+            }
+            curl_multi_close($mh);
 
             // Generate localized path to cached html pages
             $pages_path = $this->input.__SAMSON_CACHE_PATH.$this->cachepath.locale_path($locale);
@@ -327,7 +332,7 @@ class HTMLGenerator extends ExternalModule
         } else {
             elapsed('Cannot create zip file');
         }
-	}
+    }
 
     /** Callback for CSS url rewriting */
     public function srcReplaceCallback( $matches )
@@ -338,22 +343,22 @@ class HTMLGenerator extends ExternalModule
             return 'url("'.ltrim (str_replace('../','', $matches[2]), '/').'")';
         }
     }
-	
-	/**	@see ModuleConnector::init() */
-	public function init( array $params = array() )
-	{
+
+    /**	@see ModuleConnector::init() */
+    public function init( array $params = array() )
+    {
         // Subscribe to core rendered event
         s()->subscribe('core.rendered', array($this, 'renderer'));
-		
-		// Вызовем родительский метод
-		parent::init($params);
-	}	
-	
-	/** Default controller */
-	public function __BASE()
-	{
-		// Perform compression
-		$this->compress();			
-		$this->view('index');			
-	}
+
+        // Вызовем родительский метод
+        parent::init($params);
+    }
+
+    /** Default controller */
+    public function __BASE()
+    {
+        // Perform compression
+        $this->compress();
+        $this->view('index');
+    }
 }
