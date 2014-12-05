@@ -13,6 +13,9 @@ namespace samson\html;
  */
 class RewritePath
 {
+    /** @var \samson\fs\AbstractFileService File system service */
+    protected $fs;
+
     /** @var string Source file path */
     protected $source;
 
@@ -27,11 +30,10 @@ class RewritePath
      * @param string $source File path
      * @param string Resource path matching template
      */
-    public function __construct($source, $template)
+    public function __construct(\samson\fs\AbstractFileService $fs, $source, $template)
     {
+        $this->fs = $fs;
         $this->source = $source;
         $this->template = $template;
     }
-
-
 }
