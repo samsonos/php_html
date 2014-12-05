@@ -159,15 +159,18 @@ class HTMLGenerator extends ExternalModule
             $rr = m('resourcer');
 
             // Get resourcer CSS generated files
-            $cssPath = str_replace(__SAMSON_PUBLIC_PATH, '',$rr->cached['css']);
+            $cssPath = $this->input.$rr->cached['css'];
             if (isset($cssPath)) {
                 elapsed('Creating CSS resource file from:'.$cssPath);
+                
                 // Read CSS file
                 $css = file_get_contents($cssPath);
+
                 // Perform URL rewriting
                 $css = preg_replace_callback( '/url\s*\(\s*(\'|\")?([^\)\s\'\"]+)(\'|\")?\s*\)/i', array( $this,
                         'srcReplaceCallback'
                     ), $css );
+
                 // Write new CSS file
                 file_put_contents($this->output.'style.css', $css);
             }
