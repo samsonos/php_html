@@ -33,5 +33,5 @@ class RewritePath
         $this->template = $template;
     }
 
-    
+
 }
