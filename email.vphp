@@ -1,7 +1,0 @@
-<h1>SamsonOS team has generated HTML snapshot for project: <b><?php v('project_name')?></b></h1>
-<?php if(isnval('locale', \samson\core\SamsonLocale::DEF)):?>
-	<p>This snapshot is generated for localized project version: <b><?php v('locale')?></b></p>
-<?php endif?>
-<p>If you don't want to recieve this E-mail notifications or you have recieved this email accidently
-	<a href="mailto:info@samsonos.com?subject=HTMLGenerator unsubscribe <?php v('project_name')?>">use this link</a>
-</p>
