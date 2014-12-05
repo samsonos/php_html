@@ -20,7 +20,7 @@ By default module is configured to put all HTML markup files into ```__SAMSON_PU
 folder.
 
 Module automatically scans all your module controllers and their actions and call all them to get their actual output
-as pure generated HTML ouptput and stores them as ```.html``` files in default module cache folder(by default ```www/cache/html/```).
+as pure generated HTML output and stores them as ```.html``` files in default module cache folder(by default ```www/cache/html/```).
 
 ## Internalization support(i18n)
 If you web-application uses [SamsonPHP i18n module](http://github.com/samsonos/php_i18n) all controller actions output would be
@@ -35,8 +35,6 @@ Module automatically finds your combined ```javascript``` and ```css``` resource
 * ```index.js``` for javascript file
 * ```style.css``` for css file
 > All external javascript and css links are left as they are
-
-
 
 
 Developed by [SamsonOS](http://samsonos.com/)
