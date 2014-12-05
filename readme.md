@@ -37,4 +37,8 @@ Module automatically finds your combined ```javascript``` and ```css``` resource
 > All external javascript and css links are left as they are
 
 
+##Summary
+
+This module is an automatic converter from SamsonPHP web-application project to a combined finalize static HTML web-application.
+
 Developed by [SamsonOS](http://samsonos.com/)
