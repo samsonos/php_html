@@ -4,6 +4,9 @@ This module is commonly used and designed for front-end developers who want to u
 and all features of SamsonPHP framework but must get as output simple combined static html markup(.htm, .html) files
 without any PHP server code. This task also called as creating HTML markup.
 
+> Module also automatically gathers all generated localized static HTML markup web-application versions to a ZIP archive
+ that you can immediately send to your customer.
+
 [![Latest Stable Version](https://poser.pugx.org/samsonos/php_html/v/stable.svg)](https://packagist.org/packages/samsonos/php_html) 
 [![Build Status](https://travis-ci.org/samsonos/php_html.png)](https://travis-ci.org/samsonos/php_html)
 [![Coverage Status](https://img.shields.io/coveralls/samsonos/php_html.svg)](https://coveralls.io/r/samsonos/php_html?branch=master)
@@ -32,6 +35,8 @@ Module automatically finds your combined ```javascript``` and ```css``` resource
 * ```index.js``` for javascript file
 * ```style.css``` for css file
 > All external javascript and css links are left as they are
+
+
 
 
 Developed by [SamsonOS](http://samsonos.com/)
