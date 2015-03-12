@@ -50,7 +50,7 @@ class HTMLGenerator extends ExternalModule
     {
         // TODO: This must be done with new router module
         // Cache only local modules
-        if (is_a($m, ns_classname('LocalModule', 'samson\core')) && url()->module != $this->id) {
+        if (url()->module != $this->id) {
             // Build cache path with current
             $path = $this->cache_path.locale_path();
 
@@ -162,14 +162,19 @@ class HTMLGenerator extends ExternalModule
             $cssPath = $this->input.$rr->cached['css'];
             if (isset($cssPath)) {
                 elapsed('Creating CSS resource file from:'.$cssPath);
-                
+
                 // Read CSS file
                 $css = file_get_contents($cssPath);
 
                 // Perform URL rewriting
                 $css = preg_replace_callback( '/url\s*\(\s*(\'|\")?([^\)\s\'\"]+)(\'|\")?\s*\)/i', array( $this,
-                        'srcReplaceCallback'
-                    ), $css );
+                    'srcReplaceCallback'
+                ), $css );
+
+                //$css = preg_replace('url((.*?)=si', '\\www', $css);
+
+                $css = str_replace('url("fonts/', 'url("www/fonts/', $css);
+                $css = str_replace('url("img/', 'url("www/img/', $css);
 
                 // Write new CSS file
                 file_put_contents($this->output.'style.css', $css);
@@ -198,26 +203,53 @@ class HTMLGenerator extends ExternalModule
             //создаем набор дескрипторов cURL
             $mh = curl_multi_init();
 
+            //$__modules = array('local', 'account', 'clients', 'dashboard', 'login', 'main', 'notification', 'project', 'sidebar', 'translators');
+            $system_methods = array('__construct', '__sleep', '__destruct', '__get', '__set', '__call', '__wakeup');
+            //handler
             // TODO: this is not should be rewritten to support new router
             // Perform generation of every controller
-            foreach (s()->load_module_stack['local']['controllers'] as $ctrl) {
-                // generate controller URL
-                $controller = '/'.locale_path($locale).strtolower(basename($ctrl,'.php'));
+            foreach (s()->module_stack as $ctrl) {
+                $controller = sizeof($ctrl->resourceMap->controllers) ? $ctrl->resourceMap->controllers : array();
+                //$controller = array();
 
-                elapsed('Generating HTML snapshot for: '.$controller);
+                //trace($controller, true);
+                /*if (class_exists($rmController[0])) {
+                    if (!substr_count($rmController[1], 'vendor')) {
+                        $methods = get_class_methods($rmController[0]);
+                        foreach ($methods as $method) {
+                            if (!in_array($method, $system_methods)) {
+                                if ($method == '__handler') {
+                                    $controller[] = '/'.$id;
+                                } elseif (substr_count($method, '__') && !substr_count($method, '__async')) {
+                                    $new_method = str_replace('__', '',$method);
+                                    $controller[] = '/'.$id.'/'.$new_method;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    $controller = $rmController;
+                }*/
 
-                // Create curl instance
-                $ch = \curl_init('127.0.0.1'.$controller);
+                foreach ($controller as $cntrl) {
+                    // generate controller URL
+                    $controller = '/'.locale_path($locale).strtolower(basename($cntrl,'.php'));
 
-                // Set base request options
-                \curl_setopt_array($ch, array(
-                    CURLOPT_VERBOSE => true,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_HTTPHEADER =>array('Host: '.$_SERVER['HTTP_HOST'] ),
-                ));
+                    elapsed('Generating HTML snapshot for: '.$controller);
 
-                // Add curl too multi request
-                curl_multi_add_handle( $mh, $ch );
+                    // Create curl instance
+                    $ch = \curl_init('127.0.0.1'.$controller);
+
+                    // Set base request options
+                    \curl_setopt_array($ch, array(
+                        CURLOPT_VERBOSE => true,
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_HTTPHEADER =>array('Host: '.$_SERVER['HTTP_HOST'] ),
+                    ));
+
+                    // Add curl too multi request
+                    curl_multi_add_handle( $mh, $ch );
+                }
             }
 
             // TODO: Create function\module for this
@@ -251,41 +283,21 @@ class HTMLGenerator extends ExternalModule
 
                 // Read HTML file
                 $html = file_get_contents($f);
-                trace($f);
 
                 // If we have resourcer CSS resource
                 if (isset($cssPath{0})) {
-                    // Find all CSS links in HTML
-                    if (preg_match_all('/<\s*link.*href\s*=\s*["\']?(?<url>[^"\']*)/i', $html, $matches)) {
-                        // Iterate all included in HTML CSS links
-                        foreach ($matches['url'] as $url) {
-                            // If this is link generated by resourcer
-                            if ($url == '/'.$cssPath) { // Change it to new one
-                                $html = str_replace($url, 'style.css', $html);
-                                break;
-                            }
-                        }
-                    }
+                    //$html = str_replace(basename($cssPath, '.css'), 'style', $html);
+                    //$html = str_replace('/cache/resourcer/style.css', 'style.css', $html);
+                    $html = preg_replace("'<link type=\"text/css\"[^>]*?>'si", '<link type="text/css" rel="stylesheet" href="style.css">', $html);
                 }
 
                 // If we have resourcer JS resource
                 if (isset($jsPath{0})) {
-                    // Find all JS links in HTML
-                    if (preg_match_all('/<\s*script.*src\s*=\s*["\']?(?<url>[^"\']*)/i', $html, $matches)) {
-                        // Iterate all included in HTML JS links
-                        foreach ($matches['url'] as $url) {
-                            //trace($url.'-'.$jsPath);
-                            // If this is link generated by resourcer
-                            if ('www'.$url == '/'.$jsPath) { // Change it to new one
-                                $html = str_replace($url, 'index.js', $html);
-                                break;
-                            }
-                        }
-                    }
+                    $html = preg_replace("'<script[^>]*?></script>'si", '<script type="text/javascript" src="index.js"></script>', $html);
                 }
 
                 // Change path in all img SRC attributes
-                if (preg_match_all('/<\s*img\s*src\s*=\s*["\']?(?<url>[^"\']*)/i', $html, $matches)) {
+                if (preg_match_all('/< *img[^>]*src *= *["\']?([^"\']*)/i', $html, $matches)) {
                     if(isset($matches['url'])) {
                         foreach ($matches['url'] as $match) {
                             trace($match.'-'.(__SAMSON_PUBLIC_PATH.ltrim($match, '/')));
@@ -293,6 +305,9 @@ class HTMLGenerator extends ExternalModule
                         }
                     }
                 }
+
+                // Fix images inside modules
+                $html = str_replace('<img src="img', '<img src="www/img', $html);
 
                 // Remove relative links
                 $html = str_ireplace('<base href="/">', '', $html);
@@ -322,6 +337,19 @@ class HTMLGenerator extends ExternalModule
             }
         }
 
+        $imagesArray = array('png', 'jpg', 'jpeg', 'gif');
+        foreach (s()->module_stack as $module) {
+            if (!substr_count($module->resourceMap->module[1], 'vendor')) {
+                foreach ($imagesArray as $format) {
+                    if (sizeof($module->resourceMap->resources[$format])) {
+                        foreach ($module->resourceMap->resources[$format] as $file) {
+                            $this->copy_resource($file, $this->output.'www/img/'.basename($file));
+                        }
+                    }
+                }
+            }
+        }
+
         // Generate zip file name
         $zip_file = $o_output.'www.zip';
 
@@ -345,6 +373,7 @@ class HTMLGenerator extends ExternalModule
     {
         // If pattern element is found
         if (isset($matches[2])) {
+            $matches[2] = substr($matches[2], strpos($matches[2], '=')+1);
             // Change path
             return 'url("'.ltrim (str_replace('../','', $matches[2]), '/').'")';
         }
