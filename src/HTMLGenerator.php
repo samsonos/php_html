@@ -58,7 +58,7 @@ class HTMLGenerator extends ExternalModule
             $path .= isset(url()->module{0}) ? url()->module:'index';
 
             // Add module controller action name
-            $path .= isset(url()->method{0}) ? '_'.url()->method{0}:'';
+            $path .= isset(url()->method{0}) ? '_'.url()->method : '';
 
             // Add file extension
             $path .= '.html';
@@ -208,12 +208,12 @@ class HTMLGenerator extends ExternalModule
             //handler
             // TODO: this is not should be rewritten to support new router
             // Perform generation of every controller
-            foreach (s()->module_stack as $ctrl) {
-                $controller = sizeof($ctrl->resourceMap->controllers) ? $ctrl->resourceMap->controllers : array();
-                //$controller = array();
+            foreach (s()->module_stack as $id => $ctrl) {
+                $rmController = sizeof($ctrl->resourceMap->controllers) ? $ctrl->resourceMap->controllers : $ctrl->resourceMap->module;
+                $controller = array();
 
                 //trace($controller, true);
-                /*if (class_exists($rmController[0])) {
+                if (class_exists($rmController[0])) {
                     if (!substr_count($rmController[1], 'vendor')) {
                         $methods = get_class_methods($rmController[0]);
                         foreach ($methods as $method) {
@@ -229,16 +229,18 @@ class HTMLGenerator extends ExternalModule
                     }
                 } else {
                     $controller = $rmController;
-                }*/
+                }
 
                 foreach ($controller as $cntrl) {
-                    // generate controller URL
-                    $controller = '/'.locale_path($locale).strtolower(basename($cntrl,'.php'));
+                    if (strpos($cntrl, '.php')) {
+                        // generate controller URL
+                        $cntrl = '/'.locale_path('ru').strtolower(basename($cntrl,'.php'));
+                    }
 
-                    elapsed('Generating HTML snapshot for: '.$controller);
+                    elapsed('Generating HTML snapshot for: '.$cntrl);
 
                     // Create curl instance
-                    $ch = \curl_init('127.0.0.1'.$controller);
+                    $ch = \curl_init('127.0.0.1'.$cntrl);
 
                     // Set base request options
                     \curl_setopt_array($ch, array(
