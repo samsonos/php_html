@@ -210,10 +210,11 @@ class HTMLGenerator extends ExternalModule
             // Perform generation of every controller
             foreach (s()->module_stack as $id => $ctrl) {
                 $rmController = sizeof($ctrl->resourceMap->controllers) ? $ctrl->resourceMap->controllers : $ctrl->resourceMap->module;
+                //trace($rmController, 1);
                 $controller = array();
 
                 //trace($controller, true);
-                if (class_exists($rmController[0])) {
+                if (isset($rmController[0]) && class_exists($rmController[0])) {
                     if (!substr_count($rmController[1], 'vendor')) {
                         $methods = get_class_methods($rmController[0]);
                         foreach ($methods as $method) {
@@ -341,9 +342,9 @@ class HTMLGenerator extends ExternalModule
 
         $imagesArray = array('png', 'jpg', 'jpeg', 'gif');
         foreach (s()->module_stack as $module) {
-            if (!substr_count($module->resourceMap->module[1], 'vendor')) {
+            if (isset($module->resourceMap->module[1]) && !substr_count($module->resourceMap->module[1], 'vendor')) {
                 foreach ($imagesArray as $format) {
-                    if (sizeof($module->resourceMap->resources[$format])) {
+                    if (isset($module->resourceMap->resources[$format]) && sizeof($module->resourceMap->resources[$format])) {
                         foreach ($module->resourceMap->resources[$format] as $file) {
                             $this->copy_resource($file, $this->output.'www/img/'.basename($file));
                         }
