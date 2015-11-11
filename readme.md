@@ -5,7 +5,7 @@ and all features of SamsonPHP framework but must get as output simple combined s
 without any PHP server code. This task also called as creating HTML markup.
 
 > Module also automatically gathers all generated localized static HTML markup web-application versions to a ZIP archive
- that you can immediately send to your customer.
+ that you can immediately send to your client.
 
 [![Latest Stable Version](https://poser.pugx.org/samsonos/php_html/v/stable.svg)](https://packagist.org/packages/samsonos/php_html) 
 [![Build Status](https://travis-ci.org/samsonos/php_html.png)](https://travis-ci.org/samsonos/php_html)
