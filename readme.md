@@ -36,32 +36,18 @@ Module automatically finds your combined ```javascript``` and ```css``` resource
 * ```style.css``` for css file
 > All external javascript and css links are left as they are
 
-# Best tool for HTML markup
+Module will rewrite all CSS ```url(...)``` to meet new structure,
 
-# Configuration
-To create HTML snapshots for your controller actions you should use 
-[```samsonos/php_html```(click here to read detailed docs)](http://github.com/samsonos/php_html) module, example how to use it via composer.json:
+## What about images and other static resources?
+If you were using ```<?php path()?>``` directive in your images in view files, than all pathes would be rewritten automatically
+for you to meet new structure. All other resources would be copied to ```[module]/[path]```.
+
+## How to use?
+We perefer Composer, how to use it via composer.json:
 ```json
 "require-dev": {
     "samsonos/php_html": "*",
 ```
-
-# How generate HTML snapshot from your project
-You need to visit ```/html``` url and magic will happen, by default a ```/www/out``` folder would be created and all controller
-actions would be created as a separate ```[module_action].html``` files, also an ```index.html``` would be created for 
-nabigation throught generated htmls.
-
-# How about i18n?
-HTML generation module automatically creates subfolder(```/en```, ```/fr```) foreach support locale configured for a web-application,
-so you will receive generated localized gathered html markup files for your web-application.
-
-# What about CSS and JS?
-Module will rewrite all CSS ```url(...)``` to meet new structure, and will use 1 combined generated file for each resorce type.
-
-# What about images and other static resources?
-If you were using ```<?php path()?>``` directive in your images in view files, than all pathes would be rewritten automatically
-for you to meet new structure. All other resources would be copied to ```[module]/[path]```.
-
 
 ##Summary
 
